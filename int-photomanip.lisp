@@ -82,6 +82,7 @@
                        (21 (if (or (< width (* 3 (car param))) (< height (* 3 (cadr param))))
                                img
                                (crop (list width (* 3 (car param)) height (* 3 (cadr param))) img nil)))
+                        (25 (reverse (sepia img nil)))
                     (otherwise img)
                     ))
            (transpix (case method

@@ -4,6 +4,27 @@
 (include-book "list-utilities" :dir :teachpacks)
 (include-book "avl-rational-keys" :dir :teachpacks)
 
+;(defun sepia (xs rs))
+; transforms each pixel value to a sepia value
+; xs = image data to be manipulated
+; rs = transformed data
+(defun sepia (xs rs)
+   (if (endp xs)
+       rs
+       (let* ((redIn (caddr xs))
+              (greenIn (cadr xs))
+              (blueIn (car xs))
+              (redOut (min 255 (floor (+ (* redIn 393/1000)
+                                  (* greenIn 769/1000)
+                                  (* blueIn 189/1000)) 1)))
+              (greenOut (min 255 (floor (+ (* redIn 349/1000)
+                                    (* greenIn 686/1000)
+                                    (* blueIn 168/1000)) 1)))
+              (blueOut (min 255 (floor (+ (* redIn 272/1000)
+                                   (* greenIn 534/1000)
+                                   (* blueIn 131/1000)) 1))))
+             (sepia (cdddr xs) (append (list redOut greenOut blueOut) rs)))))
+
 ;(defun bw (xs rs))
 ; Converts each pixel to either black or white based on the sum of the
 ; BGR channels and whether they are above or below a specified threshold number

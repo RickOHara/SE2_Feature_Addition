@@ -65,7 +65,8 @@
                                     (21 "-crop.bmp")
                                     (22 "-magnifyHDR.bmp")
                                     (23 "-magnifyVert.bmp")
-                                    (24 "-magnifyHrz.bmp")))
+                                    (24 "-magnifyHrz.bmp")
+                                    (25 "-sepia.bmp")))
                    (controller24 bmp method params) state)
                   (if (sentinel8 bmp)
                       (byte-list->binary-file 
