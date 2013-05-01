@@ -66,7 +66,8 @@
                                     (22 "-magnifyHDR.bmp")
                                     (23 "-magnifyVert.bmp")
                                     (24 "-magnifyHrz.bmp")
-                                    (25 "-sepia.bmp")))
+                                    (25 "-sepia.bmp")
+                              	 (26 "-blur.bmp")))
                    (controller24 bmp method params) state)
                   (if (sentinel8 bmp)
                       (byte-list->binary-file 
@@ -128,4 +129,5 @@
                  (params (parse-list (cddr xs))))
             (if (stringp filepath)
                 (pms2 filepath method params state)
-                (mv err-opn-bmp state)))))
+                ;(mv err-opn-bmp state)))))
+                (mv (cons params err-opn-bmp) state)))))

@@ -4,11 +4,12 @@
 (include-book "list-utilities" :dir :teachpacks)
 (include-book "avl-rational-keys" :dir :teachpacks)
 
+
 ;(defun sepia (xs rs))
 ; transforms each pixel value to a sepia value
 ; xs = image data to be manipulated
 ; rs = transformed data
-(defun sepia (xs rs)
+(defun sepia (xs rs size curx cury)
    (if (endp xs)
        rs
        (let* ((redIn (caddr xs))
@@ -23,24 +24,105 @@
               (blueOut (min 255 (floor (+ (* redIn 272/1000)
                                    (* greenIn 534/1000)
                                    (* blueIn 131/1000)) 1))))
-             (sepia (cdddr xs) (append (list redOut greenOut blueOut) rs)))))
+             
+			(if (and (and (> curx (car size)) (< curx (+ (car size) (caddr size))))
+				    (and (> cury (cadr size)) (< cury (+ (cadr size) (cadddr size)))))
+             		(sepia (cdddr xs) 
+                      (append (list redOut greenOut blueOut) rs)
+                    		size 
+						(mod (+ curx 1) (fifth size))
+						(if (>= (+ curx 1) (fifth size))
+							(+ cury 1)
+							cury))
+             		(sepia (cdddr xs) 
+                			(append (list (third xs) (second xs) (first xs)) rs)
+                    		size 
+						(mod (+ curx 1) (fifth size))
+						(if (>= (+ curx 1) (fifth size))
+							(+ cury 1)
+							cury))))))
+
+
+; blur - duplicate of sepia
+(defun blur (xs rs size curx cury)
+   (if (endp xs)
+       rs
+       (let* (
+  		    (redIn (third xs))
+              (greenIn (second xs))
+              (blueIn (first xs))
+  		    (redNext (if (equal nil (sixth xs)) redIn (sixth xs)))
+              (greenNext (if (equal nil (fifth xs)) greenIn (fifth xs)))
+              (blueNext (if (equal nil (fourth xs)) blueIn (fourth xs)))           
+  		    (redNextNext (if (equal nil (ninth xs)) redNext (ninth xs)))
+              (greenNextNext (if (equal nil (eighth xs)) greenNext (eighth xs)))
+              (blueNextNext (if (equal nil (seventh xs)) blueNext (seventh xs)))           
+ 		    ;(redNextNextNext (if (equal nil (nth 11 xs)) redNext (nth 11 xs)))
+              ;(greenNextNextNext (if (equal nil (nth 10 xs)) greenNext (nth 10 xs)))
+              ;(blueNextNextNext (if (equal nil (nth 9 xs)) blueNext (nth 9 xs)))     
+              (redNextNextNext (if (equal nil (third rs)) redIn (third rs)))
+              (greenNextNextNext (if (equal nil (second rs)) greenIn (second rs)))
+              (blueNextNextNext (if (equal nil (first rs)) blueIn (first rs)))
+  		    (redOut (floor (/ (+ redIn redNext redNextNext redNextNextNext) 4)1))
+              (greenOut (floor (/ (+ greenIn greenNext greenNextNext greenNextNextNext ) 4)1))
+              (blueOut (floor(/ (+ blueIn blueNext blueNextNext blueNextNextNext) 4)1))
+             )
+
+
+		(if (and (and (> curx (car size)) (< curx (+ (car size) (caddr size))))
+			    (and (> cury (cadr size)) (< cury (+ (cadr size) (cadddr size)))))
+             (blur (cdddr xs) 
+                   (append (list redOut greenOut blueOut) rs)
+                    		size 
+						(mod (+ curx 1) (fifth size))
+						(if (>= (+ curx 1) (fifth size))
+							(+ cury 1)
+							cury))
+       		(blur (cdddr xs)
+               
+                			(append (list (third xs) (second xs) (first xs)) rs)
+                    		size 
+						(mod (+ curx 1) (fifth size))
+						(if (>= (+ curx 1) (fifth size))
+							(+ cury 1)
+							cury))))))
+
 
 ;(defun bw (xs rs))
 ; Converts each pixel to either black or white based on the sum of the
 ; BGR channels and whether they are above or below a specified threshold number
 ; xs = image data to be manipulated
 ; rs = transformed data
-(defun bw (xs contrast rs)
-  (if (endp xs)
-      rs
-      (let ((pix (+ (nfix (first xs))
-                    (nfix (second xs))
-                    (nfix (third xs)))))
-        (if (< pix contrast)
-            (bw (cdddr xs) contrast
-                (append (list 0 0 0) rs))
-            (bw (cdddr xs) contrast
-                (append (list 255 255 255) rs))))))
+(defun bw (xs contrast rs size curx cury)
+	(if (endp xs)
+		rs
+		(let ((pix (+ (nfix (first xs))
+			(nfix (second xs))
+			(nfix (third xs)))))
+			(if (and (and (> curx (car size)) (< curx (+ (car size) (caddr size))))
+				    (and (> cury (cadr size)) (< cury (+ (cadr size) (cadddr size)))))
+				(if (< pix contrast)
+					(bw (cdddr xs) contrast
+						(append (list 0 0 0) rs) 
+						size 
+						(mod (+ curx 1) (fifth size))
+						(if (>= (+ curx 1) (fifth size))
+							(+ cury 1)
+							cury))
+					(bw (cdddr xs) contrast
+						(append (list 255 255 255) rs) 
+						size  
+						(mod (+ curx 1) (fifth size))
+						(if (>= (+ curx 1) (fifth size))
+							(+ cury 1)
+							cury)))
+				(bw (cdddr xs) contrast
+                (append (list (third xs) (second xs) (first xs)) rs)
+					size
+					(mod (+ curx 1) (fifth size))
+					(if (>= (+ curx 1) (fifth size))
+						(+ cury 1)
+						cury))))))
 
 ;(defun blu-w (xs rs))
 ; Converts each pixel to either blue or white based on the sum of the
@@ -107,31 +189,64 @@
 ; w2 = green channel of the second color
 ; w3 = red channel of the second color
 ; rs = transformed data
-(defun two-tone (xs b1 b2 b3 w1 w2 w3 rs)
+(defun two-tone (xs b1 b2 b3 w1 w2 w3 rs size curx cury)
   (if (endp xs)
       rs
       (let ((pix (+ (nfix (first xs))
                     (nfix (second xs))
                     (nfix (third xs)))))
-        (if (< pix 250)
+			(if (and (and (> curx (first size)) (< curx (+ (first size) (third size))))
+				    (and (> cury (second size)) (< cury (+ (second size) (fourth size)))))
+		        (if (< pix 250)
+		            (two-tone (cdddr xs) b1 b2 b3 w1 w2 w3
+		                      (append (list b3 b2 b1) rs)
+					size
+					(mod (+ curx 1) (fifth size))
+					(if (>= (+ curx 1) (fifth size))
+						(+ cury 1)
+						cury))
+		            (two-tone (cdddr xs) b1 b2 b3 w1 w2 w3
+		                      (append (list w3 w2 w1) rs)
+					size
+					(mod (+ curx 1) (fifth size))
+					(if (>= (+ curx 1) (fifth size))
+						(+ cury 1)
+						cury)))
             (two-tone (cdddr xs) b1 b2 b3 w1 w2 w3
-                      (append (list b3 b2 b1) rs))
-            (two-tone (cdddr xs) b1 b2 b3 w1 w2 w3
-                      (append (list w3 w2 w1) rs))))))
+                (append (list (third xs) (second xs) (first xs)) rs) 
+					size
+					(mod (+ curx 1) (fifth size))
+					(if (>= (+ curx 1) (fifth size))
+						(+ cury 1)
+						cury))))))
 
 ;(defun gray (xs rs))
 ; Converts each pixel by calculating the average of the BGR channels and 
 ; setting all channels to the average
 ; xs = image data to be manipulated
 ; rs = transformed data
-(defun gray (xs rs)
+(defun gray (xs rs size curx cury)
   (if (endp xs)
       rs
       (let* ((pix (truncate(+ (nfix (first xs))
                               (nfix (second xs))
                               (nfix (third xs))) 3)))
-        (gray (cdddr xs)
-              (append (list pix pix pix) rs)))))
+			(if (and (and (> curx (first size)) (< curx (+ (first size) (third size))))
+				    (and (> cury (second size)) (< cury (+ (second size) (fourth size)))))
+		        (gray (cdddr xs)
+		               (append (list pix pix pix) rs)
+					size 
+					(mod (+ curx 1) (fifth size))
+					(if (>= (+ curx 1) (fifth size))
+					(+ cury 1)
+					cury))
+       		   (gray (cdddr xs)
+                (append (list (third xs) (second xs) (first xs)) rs)
+					size 
+					(mod (+ curx 1) (fifth size))
+					(if (>= (+ curx 1) (fifth size))
+						(+ cury 1)
+						cury))))))
 
 ;(defun tint-blu (xs rs))
 ; Similar to grayscale, converts each pixel by calculating the average of the BGR channels 
@@ -139,17 +254,36 @@
 ; to 90 above the average
 ; xs = image data to be manipulated
 ; rs = transformed data
-(defun tint-blu (xs rs)
+(defun tint-blu (xs rs size curx cury)
   (if (endp xs)
       rs
       (let* ((pix (truncate(+ (nfix (first xs))
                               (nfix (second xs))
                               (nfix (third xs))) 3)))
+			(if (and (and (> curx (first size)) (< curx (+ (first size) (third size))))
+				    (and (> cury (second size)) (< cury (+ (second size) (fourth size)))))
         (if (< pix 165)
             (tint-blu (cdddr xs)
-                      (append (list pix pix (+ pix 90)) rs)) 
+                      (append (list pix pix (+ pix 90)) rs)
+					size 
+					(mod (+ curx 1) (fifth size))
+					(if (>= (+ curx 1) (fifth size))
+						(+ cury 1)
+						cury))
             (tint-blu (cdddr xs)
-                      (append (list pix pix 255) rs))))))
+                      (append (list pix pix 255) rs)
+					size 
+					(mod (+ curx 1) (fifth size))
+					(if (>= (+ curx 1) (fifth size))
+						(+ cury 1)
+						cury)))
+     	(tint-blu (cdddr xs)
+                (append (list (third xs) (second xs) (first xs)) rs)
+					size 
+					(mod (+ curx 1) (fifth size))
+					(if (>= (+ curx 1) (fifth size))
+						(+ cury 1)
+						cury))))))
 
 ;(defun tint-grn (xs rs))
 ; Similar to grayscale, converts each pixel by calculating the average of the BGR channels 
@@ -157,17 +291,36 @@
 ; to 50 above the average
 ; xs = image data to be manipulated
 ; rs = transformed data
-(defun tint-grn (xs rs)
+(defun tint-grn (xs rs size curx cury)
   (if (endp xs)
       rs
       (let* ((pix (truncate(+ (nfix (first xs))
                               (nfix (second xs))
                               (nfix (third xs))) 3)))
+			(if (and (and (> curx (first size)) (< curx (+ (first size) (third size))))
+				    (and (> cury (second size)) (< cury (+ (second size) (fourth size)))))
         (if (< pix 205)
             (tint-grn (cdddr xs)
-                      (append (list pix (+ pix 50) pix) rs)) 
+                      (append (list pix (+ pix 50) pix) rs)
+					size 
+					(mod (+ curx 1) (fifth size))
+					(if (>= (+ curx 1) (fifth size))
+						(+ cury 1)
+						cury))
             (tint-grn (cdddr xs)
-                      (append (list pix 255 pix) rs))))))
+                      (append (list pix 255 pix) rs)
+					size 
+					(mod (+ curx 1) (fifth size))
+					(if (>= (+ curx 1) (fifth size))
+						(+ cury 1)
+						cury)))
+     	(tint-grn (cdddr xs)
+                (append (list (third xs) (second xs) (first xs)) rs)
+					size 
+					(mod (+ curx 1) (fifth size))
+					(if (>= (+ curx 1) (fifth size))
+						(+ cury 1)
+						cury))))))
 
 ;(defun tint-red (xs rs))
 ; Similar to grayscale, converts each pixel by calculating the average of the BGR channels 
@@ -175,29 +328,63 @@
 ; to 100 above the average
 ; xs = image data to be manipulated
 ; rs = transformed data
-(defun tint-red (xs rs)
+(defun tint-red (xs rs size curx cury)
   (if (endp xs)
       rs
       (let* ((pix (truncate(+ (nfix (first xs))
                               (nfix (second xs))
                               (nfix (third xs))) 3)))
+			(if (and (and (> curx (first size)) (< curx (+ (first size) (third size))))
+				    (and (> cury (second size)) (< cury (+ (second size) (fourth size)))))
         (if (< pix 155)
             (tint-red (cdddr xs)
-                      (append (list (+ pix 100) pix pix) rs)) 
+                      (append (list (+ pix 100) pix pix) rs)
+					size 
+					(mod (+ curx 1) (fifth size))
+					(if (>= (+ curx 1) (fifth size))
+						(+ cury 1)
+						cury))
             (tint-red (cdddr xs)
-                      (append (list 255 pix pix) rs))))))
+                      (append (list 255 pix pix) rs)
+					size 
+					(mod (+ curx 1) (fifth size))
+					(if (>= (+ curx 1) (fifth size))
+						(+ cury 1)
+						cury)))
+     	(tint-red (cdddr xs)
+                (append (list (third xs) (second xs) (first xs)) rs)
+					size 
+					(mod (+ curx 1) (fifth size))
+					(if (>= (+ curx 1) (fifth size))
+						(+ cury 1)
+						cury))))))
 
 ;(defun negatize (xs rs))
 ; Converts each pixel to its complement by subtracting each channel value from
 ; 255 and setting the difference as the values for the "negative" image
 ; xs = image data to be manipulated
 ; rs = transformed data
-(defun negatize (xs rs)
+(defun negatize (xs rs size curx cury)
   (if (endp xs)
       rs
-      (negatize (cdddr xs) (append (list (- 255 (caddr xs))
+			(if (and (and (> curx (first size)) (< curx (+ (first size) (third size))))
+				    (and (> cury (second size)) (< cury (+ (second size) (fourth size)))))
+      (negatize (cdddr xs) 
+                (append (list (- 255 (caddr xs))
                                          (- 255 (cadr xs))
-                                         (- 255 (car xs))) rs))))
+                                         (- 255 (car xs))) rs)
+                size
+			(mod (+ curx 1) (fifth size))
+			(if (>= (+ curx 1) (fifth size))
+				(+ cury 1)
+				cury))
+    (negatize (cdddr xs) 
+                (append (list (third xs) (second xs) (first xs)) rs)
+                size
+			(mod (+ curx 1) (fifth size))
+			(if (>= (+ curx 1) (fifth size))
+				(+ cury 1)
+				cury)))))
 
 ;(defun rot-180 (xs rs))
 ; Rotates the image 180 degrees; calls reorder to invert the order of
